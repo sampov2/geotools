@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -896,6 +897,16 @@ class RasterLayerResponse{
                                     ImageMosaicReader.ELEVATION_DOMAIN, elevations);
                             query.setFilter(FeatureUtilities.DEFAULT_FILTER_FACTORY.and(query.getFilter(),
                                     elevationF));
+                        } else {
+                            // This is such a dirty hack: if no elevation given as parameter, try to add a filter for a (hopefully) non-existing
+                            // elevation value.
+                            // The try / catch is to avoid breaking layers with no elevation dimension
+                            try {
+                                final Filter dummyF = rasterManager.parent.elevationDomainManager.createFilter(
+                                        ImageMosaicReader.ELEVATION_DOMAIN, Collections.singletonList("none"));
+                                query.setFilter(FeatureUtilities.DEFAULT_FILTER_FACTORY.and(query.getFilter(), dummyF));
+                            } catch(IllegalArgumentException iae) { /* elevation domain not supported */ }
+                            
                         }
             
                         // handle generic filter since we then combine this with the max in case we are asking for current in time
@@ -910,6 +921,15 @@ class RasterLayerResponse{
                                     ImageMosaicReader.TIME_DOMAIN, times);
                             query.setFilter(FeatureUtilities.DEFAULT_FILTER_FACTORY.and(query.getFilter(),
                                     timeFilter));
+                        } else {
+                            // This is such a dirty hack: if no time given as parameter, try to add a filter for a (hopefully) non-existing
+                            // time value.
+                            // The try / catch is to avoid breaking layers with no time dimension
+                            try {
+                                final Filter dummyF = rasterManager.parent.timeDomainManager.createFilter(
+                                        ImageMosaicReader.TIME_DOMAIN, Collections.singletonList("1970-01-01T00:00:00.000Z"));
+                                query.setFilter(FeatureUtilities.DEFAULT_FILTER_FACTORY.and(query.getFilter(), dummyF));
+                            } catch(IllegalArgumentException iae) { /* time domain not supported */ }
                         }
             
                         if (hasAdditionalDomains) {
