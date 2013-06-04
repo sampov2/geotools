@@ -897,7 +897,7 @@ class RasterLayerResponse{
                                     ImageMosaicReader.ELEVATION_DOMAIN, elevations);
                             query.setFilter(FeatureUtilities.DEFAULT_FILTER_FACTORY.and(query.getFilter(),
                                     elevationF));
-                        } else {
+                        } else if (rasterManager.parent.elevationDomainManager != null) {
                             // This is such a dirty hack: if no elevation given as parameter, try to add a filter for a (hopefully) non-existing
                             // elevation value.
                             // The try / catch is to avoid breaking layers with no elevation dimension
@@ -921,7 +921,7 @@ class RasterLayerResponse{
                                     ImageMosaicReader.TIME_DOMAIN, times);
                             query.setFilter(FeatureUtilities.DEFAULT_FILTER_FACTORY.and(query.getFilter(),
                                     timeFilter));
-                        } else {
+                        } else if (rasterManager.parent.timeDomainManager != null) {
                             // This is such a dirty hack: if no time given as parameter, try to add a filter for a (hopefully) non-existing
                             // time value.
                             // The try / catch is to avoid breaking layers with no time dimension
