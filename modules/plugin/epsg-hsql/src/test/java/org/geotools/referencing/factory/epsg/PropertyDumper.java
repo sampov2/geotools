@@ -63,7 +63,7 @@ public class PropertyDumper {
         });
         for (String code : codes) {
             try {
-                CoordinateReferenceSystem crs = CRS.decode("EPSG:" + code, true);
+                CoordinateReferenceSystem crs = CRS.decode("EPSG:" + code);
                 // use toString, it's more lenient that toWKT
                 String wkt = crs.toString().replaceAll("\n", "").replaceAll("  ", "");
                 // make sure we can parse back what we generated
