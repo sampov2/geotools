@@ -27,6 +27,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import javax.xml.XMLConstants;
 import javax.xml.namespace.QName;
 
+import net.opengis.wfs20.ListStoredQueriesResponseType;
+import net.opengis.wfs20.StoredQueryListItemType;
+
 import org.geotools.data.store.ContentDataStore;
 import org.geotools.data.store.ContentEntry;
 import org.geotools.data.store.ContentFeatureSource;
@@ -54,7 +57,7 @@ public class WFSDataStore extends ContentDataStore {
 
     private final Map<QName, FeatureType> remoteFeatureTypes;
   
-    private List<String> remoteStoredQueries;
+    private ListStoredQueriesResponseType remoteStoredQueries;
     
     public WFSDataStore(final WFSClient client) {
         this.client = client;
@@ -103,10 +106,9 @@ public class WFSDataStore extends ContentDataStore {
         
         if (client.getInfo().getVersion().equals("2.0.0")) {
         	
-        	
-        	List<String> queries = getStoredQueryList();
+        	for (StoredQueryListItemType query : getStoredQueryList().getStoredQuery()) {
 
-        	for (String q : queries) {
+        		String q = query.getId();
 	        	QName remoteTypeName = new QName("http://www.fmi.fi", q);
 	        	
 	        	String localTypeName = q;
@@ -152,7 +154,7 @@ public class WFSDataStore extends ContentDataStore {
         return qName;
     }
 
-    private List<String> getStoredQueryList() throws IOException {
+    private ListStoredQueriesResponseType getStoredQueryList() throws IOException {
     	
     	synchronized(this) {
 
@@ -162,7 +164,7 @@ public class WFSDataStore extends ContentDataStore {
     			
     			ListStoredQueriesResponse response = client.issueRequest(request);
 
-	    		remoteStoredQueries = response.getStoredQueries();
+    			remoteStoredQueries = response.getListStoredQueriesResponse();
 	    	}
     	}
 
