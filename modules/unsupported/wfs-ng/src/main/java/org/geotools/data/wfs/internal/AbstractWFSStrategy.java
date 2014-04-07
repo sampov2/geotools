@@ -152,6 +152,9 @@ public abstract class AbstractWFSStrategy extends WFSStrategy {
     protected abstract EObject createTransactionRequest(TransactionRequest request)
             throws IOException;
 
+    protected abstract EObject createListStoredQueriesRequest(ListStoredQueriesRequest request)
+    		throws IOException;
+    
     /**
      * Returns the xml configuration used to encode a filter at
      * {@link #encodeGetFeatureGetFilter(Filter)}
@@ -690,6 +693,9 @@ public abstract class AbstractWFSStrategy extends WFSStrategy {
         case TRANSACTION:
             requestObject = createTransactionRequest((TransactionRequest) request);
             break;
+        case LIST_STORED_QUERIES:
+        	requestObject = createListStoredQueriesRequest((ListStoredQueriesRequest) request);
+        	break;
         default:
             throw new UnsupportedOperationException("not yet implemented for "
                     + request.getOperation());
