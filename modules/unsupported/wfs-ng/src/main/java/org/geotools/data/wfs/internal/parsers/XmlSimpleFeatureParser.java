@@ -124,7 +124,9 @@ public class XmlSimpleFeatureParser implements GetFeatureParser {
             parser = factory.newPullParser();
             parser.setInput(inputStream, "UTF-8");
             parser.nextTag();
-            parser.require(START_TAG, WFS.NAMESPACE, WFS.FeatureCollection.getLocalPart());
+            
+            // TODO: namespace?
+            parser.require(START_TAG, null, WFS.FeatureCollection.getLocalPart());
 
             String nof = parser.getAttributeValue(null, "numberOfFeatures");
             if (nof != null) {
@@ -729,7 +731,7 @@ public class XmlSimpleFeatureParser implements GetFeatureParser {
             return defaultValue;
         }
         boolean forceXY = false;
-        if (srsName.startsWith("http://")) {
+        if (srsName.startsWith("http://") && srsName.indexOf('#') != -1) {
             forceXY = true;
             srsName = "EPSG:" + srsName.substring(1 + srsName.lastIndexOf('#'));
         } else if (srsName.startsWith("EPSG:")) {
@@ -891,6 +893,13 @@ public class XmlSimpleFeatureParser implements GetFeatureParser {
                 if (featureNamespace.equals(namespace) && featureName.equals(name)) {
                     String featureId = parser.getAttributeValue(GML.id.getNamespaceURI(),
                             GML.id.getLocalPart());
+                    /*
+                    if (featureId == null) {
+                    	featureId = parser.getAttributeValue(
+							org.geotools.gml3.v3_2.GML.id.getNamespaceURI(),
+							org.geotools.gml3.v3_2.GML.id.getLocalPart());
+					}
+					*/
 
                     if (featureId == null) {
                         featureId = parser.getAttributeValue(null, "fid");
