@@ -17,6 +17,8 @@
 package org.geotools.data.wfs;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +37,8 @@ import org.geotools.data.store.ContentEntry;
 import org.geotools.data.store.ContentFeatureSource;
 import org.geotools.data.wfs.internal.DescribeFeatureTypeRequest;
 import org.geotools.data.wfs.internal.DescribeFeatureTypeResponse;
+import org.geotools.data.wfs.internal.DescribeStoredQueriesRequest;
+import org.geotools.data.wfs.internal.DescribeStoredQueriesResponse;
 import org.geotools.data.wfs.internal.ListStoredQueriesRequest;
 import org.geotools.data.wfs.internal.ListStoredQueriesResponse;
 import org.geotools.data.wfs.internal.WFSClient;
@@ -51,7 +55,9 @@ import com.vividsolutions.jts.geom.impl.PackedCoordinateSequenceFactory;
 
 public class WFSDataStore extends ContentDataStore {
 
-    private final WFSClient client;
+    private static final String STORED_QUERY_LOCALNAME_PREFIX = "!StoredQuery_";
+
+	private final WFSClient client;
 
     private final Map<Name, QName> names;
 
@@ -108,14 +114,12 @@ public class WFSDataStore extends ContentDataStore {
         	
         	for (StoredQueryListItemType query : getStoredQueryList().getStoredQuery()) {
 
-        		String q = query.getId();
-	        	QName remoteTypeName = new QName("http://www.fmi.fi", q);
+        		String localTypeName = query.getId();
+	        	QName remoteTypeName = new QName(namespaceURI, STORED_QUERY_LOCALNAME_PREFIX + localTypeName);
 	        	
-	        	String localTypeName = q;
-	        	
-	        	Name mock = new NameImpl(getNamespaceURI(), localTypeName);
-	        	names.add(mock);
-	        	this.names.put(mock, remoteTypeName);
+	        	Name typeName = new NameImpl(namespaceURI, localTypeName);
+	        	names.add(typeName);
+	        	this.names.put(typeName, remoteTypeName);
         	}
         }
         
@@ -181,12 +185,13 @@ public class WFSDataStore extends ContentDataStore {
             remoteFeatureType = remoteFeatureTypes.get(remoteTypeName);
             if (remoteFeatureType == null) {
 
-                DescribeFeatureTypeRequest request = client.createDescribeFeatureTypeRequest();
-                request.setTypeName(remoteTypeName);
+            	if (remoteTypeName.getLocalPart().startsWith(STORED_QUERY_LOCALNAME_PREFIX)) {
+            		String storedQueryId = remoteTypeName.getLocalPart().substring(STORED_QUERY_LOCALNAME_PREFIX.length());
+            		remoteFeatureType = resolveStoredQueryType(storedQueryId);
+            	} else {
+            		remoteFeatureType = resolveSimpleFeatureType(remoteTypeName);
+            	}
 
-                DescribeFeatureTypeResponse response = client.issueRequest(request);
-
-                remoteFeatureType = response.getFeatureType();
                 remoteFeatureTypes.put(remoteTypeName, remoteFeatureType);
             }
         }
@@ -194,8 +199,40 @@ public class WFSDataStore extends ContentDataStore {
         return remoteFeatureType;
     }
 
+	private FeatureType resolveStoredQueryType(String storedQueryId) throws IOException {
+		DescribeStoredQueriesRequest request = client.createDescribeStoredQueriesRequest();
+
+		URI id;
+		try {
+			id = new URI(storedQueryId);
+		} catch(URISyntaxException use) {
+			throw new IOException(use);
+		}
+
+		request.getStoredQueryIds().add(id);
+
+		DescribeStoredQueriesResponse response = client.issueRequest(request);
+
+		List<FeatureType> featureTypes = response.getFeatureTypes(storedQueryId);
+
+		// TODO: a selection mechanism would be nice...
+		return featureTypes.get(0);
+	}
+
+	private FeatureType resolveSimpleFeatureType(final QName remoteTypeName)
+	        throws IOException {
+		FeatureType remoteFeatureType;
+		DescribeFeatureTypeRequest request = client.createDescribeFeatureTypeRequest();
+		request.setTypeName(remoteTypeName);
+
+		DescribeFeatureTypeResponse response = client.issueRequest(request);
+
+		remoteFeatureType = response.getFeatureType();
+		return remoteFeatureType;
+	}
+
     public SimpleFeatureType getRemoteSimpleFeatureType(final QName remoteTypeName)
-            throws IOException {
+    		throws IOException {
 
         final FeatureType remoteFeatureType = getRemoteFeatureType(remoteTypeName);
         final SimpleFeatureType remoteSimpleFeatureType;
