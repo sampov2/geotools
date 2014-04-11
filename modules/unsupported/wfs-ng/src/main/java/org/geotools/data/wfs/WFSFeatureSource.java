@@ -201,7 +201,7 @@ class WFSFeatureSource extends ContentFeatureSource {
         }
     }
 
-    private GetFeatureRequest createGetFeature(Query query, ResultType resultType)
+    protected GetFeatureRequest createGetFeature(Query query, ResultType resultType)
             throws IOException {
         GetFeatureRequest request = client.createGetFeatureRequest();
 
