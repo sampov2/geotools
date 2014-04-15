@@ -826,11 +826,9 @@ public class XmlSimpleFeatureParser implements GetFeatureParser {
     private Coordinate[] toCoordList(String rawTextValue, final String decimalSeparator,
             final String coordSeparator, final String tupleSeparator, final int dimension, CoordinateReferenceSystem crs) {
 
-        rawTextValue = rawTextValue.trim();
-        rawTextValue = rawTextValue.replaceAll("\n", " ");
-        rawTextValue = rawTextValue.replaceAll("\r", " ");
+    	rawTextValue = rawTextValue.replaceAll("[\n\r]", " ").trim();
 
-        String[] tuples = rawTextValue.trim().split("\\" + tupleSeparator + "+");
+        String[] tuples = rawTextValue.split("\\" + tupleSeparator + "+");
 
         final int nCoords = tuples.length;
 
