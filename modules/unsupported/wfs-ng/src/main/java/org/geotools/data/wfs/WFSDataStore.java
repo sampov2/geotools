@@ -58,13 +58,13 @@ public class WFSDataStore extends ContentDataStore {
 
     private static final String STORED_QUERY_LOCALNAME_PREFIX = "StoredQuery_";
 
-	private final WFSClient client;
+    private final WFSClient client;
 
     private final Map<Name, QName> names;
 
     private final Map<QName, FeatureType> remoteFeatureTypes;
     private final Map<String, StoredQueryDescriptionType> storedQueryDescriptionTypes;
-    
+
     private ListStoredQueriesResponseType remoteStoredQueries;
     
     public WFSDataStore(final WFSClient client) {
@@ -111,22 +111,22 @@ public class WFSDataStore extends ContentDataStore {
             names.add(typeName);
             this.names.put(typeName, remoteTypeName);
         }
-        
+
         if (client.supportsStoredQueries()) {
-        	ListStoredQueriesResponseType list = getStoredQueryList();
-        	for (StoredQueryListItemType query : list.getStoredQuery()) {
-        		
-        		String localTypeName = query.getId();
-        		
-        		// No plan on what to do if there are multiple
-        		QName remoteTypeName = query.getReturnFeatureType().get(0);
-        		
-	        	Name typeName = new NameImpl(namespaceURI, STORED_QUERY_LOCALNAME_PREFIX + localTypeName);
-	        	names.add(typeName);
-	        	this.names.put(typeName, remoteTypeName);
-        	}
+            ListStoredQueriesResponseType list = getStoredQueryList();
+            for (StoredQueryListItemType query : list.getStoredQuery()) {
+
+                String localTypeName = query.getId();
+
+                // No plan on what to do if there are multiple
+                QName remoteTypeName = query.getReturnFeatureType().get(0);
+
+                Name typeName = new NameImpl(namespaceURI, STORED_QUERY_LOCALNAME_PREFIX + localTypeName);
+                names.add(typeName);
+                this.names.put(typeName, remoteTypeName);
+            }
         }
-        
+
         return names;
     }
 
@@ -139,9 +139,9 @@ public class WFSDataStore extends ContentDataStore {
     @Override
     protected ContentFeatureSource createFeatureSource(final ContentEntry entry) throws IOException {
         ContentFeatureSource source;
-        
+
         final QName remoteTypeName = getRemoteTypeName(entry.getName());
-        
+
         if (!entry.getName().getLocalPart().startsWith(STORED_QUERY_LOCALNAME_PREFIX)) {
             source = new WFSFeatureSource(entry, client);
 
@@ -150,12 +150,12 @@ public class WFSDataStore extends ContentDataStore {
             }
             
         } else {
-        	String storedQueryId = entry.getName().getLocalPart().substring(STORED_QUERY_LOCALNAME_PREFIX.length());
-        	StoredQueryDescriptionType desc = getStoredQueryDescriptionType(storedQueryId);
-        	
-        	source = new WFSStoredQueryContentFeatureSource(entry, client, desc);
+            String storedQueryId = entry.getName().getLocalPart().substring(STORED_QUERY_LOCALNAME_PREFIX.length());
+            StoredQueryDescriptionType desc = getStoredQueryDescriptionType(storedQueryId);
+
+            source = new WFSStoredQueryContentFeatureSource(entry, client, desc);
         }
-        
+
         return source;
     }
 
@@ -171,22 +171,22 @@ public class WFSDataStore extends ContentDataStore {
     }
 
     private ListStoredQueriesResponseType getStoredQueryList() throws IOException {
-    	
-    	synchronized(this) {
 
-    		if (remoteStoredQueries == null) {
-    			
-    			ListStoredQueriesRequest request = client.createListStoredQueriesRequest();
-    			
-    			ListStoredQueriesResponse response = client.issueRequest(request);
+        synchronized(this) {
 
-    			remoteStoredQueries = response.getListStoredQueriesResponse();
-	    	}
-    	}
+            if (remoteStoredQueries == null) {
 
-		return remoteStoredQueries;
-	}
-    
+                ListStoredQueriesRequest request = client.createListStoredQueriesRequest();
+
+                ListStoredQueriesResponse response = client.issueRequest(request);
+
+                remoteStoredQueries = response.getListStoredQueriesResponse();
+            }
+        }
+
+        return remoteStoredQueries;
+    }
+
     public FeatureType getRemoteFeatureType(final QName remoteTypeName) throws IOException {
 
         FeatureType remoteFeatureType;
@@ -196,14 +196,14 @@ public class WFSDataStore extends ContentDataStore {
         synchronized (lockObj) {
             remoteFeatureType = remoteFeatureTypes.get(remoteTypeName);
             if (remoteFeatureType == null) {
-            	
-        		DescribeFeatureTypeRequest request = client.createDescribeFeatureTypeRequest();
-        		request.setTypeName(remoteTypeName);
 
-        		DescribeFeatureTypeResponse response = client.issueRequest(request);
+                DescribeFeatureTypeRequest request = client.createDescribeFeatureTypeRequest();
+                request.setTypeName(remoteTypeName);
 
-        		remoteFeatureType = response.getFeatureType();
-        		
+                DescribeFeatureTypeResponse response = client.issueRequest(request);
+
+                remoteFeatureType = response.getFeatureType();
+
                 remoteFeatureTypes.put(remoteTypeName, remoteFeatureType);
             }
         }
@@ -212,43 +212,43 @@ public class WFSDataStore extends ContentDataStore {
     }
 
     // Here for possible future use
-	private StoredQueryDescriptionType getStoredQueryDescriptionType(String storedQueryId) throws IOException {
-		
-		StoredQueryDescriptionType desc = null;
-		
+    private StoredQueryDescriptionType getStoredQueryDescriptionType(String storedQueryId) throws IOException {
+
+        StoredQueryDescriptionType desc = null;
+
         final String lockObj = storedQueryId.intern();
 
         synchronized (lockObj) {
             desc = storedQueryDescriptionTypes.get(storedQueryId);
             if (desc == null) {
-            	
 
-        		DescribeStoredQueriesRequest request = client.createDescribeStoredQueriesRequest();
 
-        		URI id;
-        		try {
-        			id = new URI(storedQueryId);
-        		} catch(URISyntaxException use) {
-        			throw new IOException(use);
-        		}
+                DescribeStoredQueriesRequest request = client.createDescribeStoredQueriesRequest();
 
-        		request.getStoredQueryIds().add(id);
+                URI id;
+                try {
+                    id = new URI(storedQueryId);
+                } catch(URISyntaxException use) {
+                    throw new IOException(use);
+                }
 
-        		DescribeStoredQueriesResponse response = client.issueRequest(request);
+                request.getStoredQueryIds().add(id);
 
-        		desc = response.getStoredQueryDescriptions().get(0);
-        		storedQueryDescriptionTypes.put(storedQueryId, desc);
+                DescribeStoredQueriesResponse response = client.issueRequest(request);
+
+                desc = response.getStoredQueryDescriptions().get(0);
+                storedQueryDescriptionTypes.put(storedQueryId, desc);
             }
         }
 
         return desc;
-        
-        
-		
-	}
+
+
+
+    }
 
     public SimpleFeatureType getRemoteSimpleFeatureType(final QName remoteTypeName)
-    		throws IOException {
+            throws IOException {
 
         final FeatureType remoteFeatureType = getRemoteFeatureType(remoteTypeName);
         final SimpleFeatureType remoteSimpleFeatureType;
