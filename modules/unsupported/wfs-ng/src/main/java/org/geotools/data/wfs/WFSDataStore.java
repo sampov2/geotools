@@ -156,7 +156,7 @@ public class WFSDataStore extends ContentDataStore {
         return source;
     }
 
-    public boolean isStoredQuery(Name name) {
+    private boolean isStoredQuery(Name name) {
         return configuredStoredQueries.containsKey(name.getLocalPart());
     }
 
@@ -273,7 +273,7 @@ public class WFSDataStore extends ContentDataStore {
 
             return name;
         } catch (IOException e) {
-            configuredStoredQueries.remove(storedQueryId);
+            configuredStoredQueries.remove(localName);
             throw e;
         }
     }
@@ -296,6 +296,12 @@ public class WFSDataStore extends ContentDataStore {
 
     public Map<String, String> getConfiguredStoredQueries() {
         return configuredStoredQueries;
+    }
+
+    public void removeStoredQuery(String localName) {
+        Name name = new NameImpl(namespaceURI, localName);
+        this.names.remove(name);
+        configuredStoredQueries.remove(localName);
     }
 
 }
