@@ -18,6 +18,7 @@ package org.geotools.data.wfs;
 
 import static org.geotools.data.wfs.internal.URIs.buildURL;
 
+import org.geotools.data.wfs.impl.WFSDataStore;
 import org.geotools.util.KVP;
 import org.geotools.util.SimpleInternationalString;
 import org.geotools.util.Version;
