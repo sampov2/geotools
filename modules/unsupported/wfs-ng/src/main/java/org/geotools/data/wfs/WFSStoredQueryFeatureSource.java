@@ -15,7 +15,7 @@
  *    Lesser General Public License for more details.
  */
 
-package org.geotools.data.wfs.impl;
+package org.geotools.data.wfs;
 
 import java.io.IOException;
 import java.util.logging.Logger;
@@ -29,13 +29,13 @@ import org.geotools.data.wfs.internal.WFSClient;
 import org.geotools.data.wfs.internal.GetFeatureRequest.ResultType;
 import org.geotools.util.logging.Logging;
 
-public class WFSStoredQueryContentFeatureSource extends WFSContentFeatureSource {
+public class WFSStoredQueryFeatureSource extends WFSFeatureSource {
 
-    private static final Logger LOGGER = Logging.getLogger(WFSStoredQueryContentFeatureSource.class);
+    private static final Logger LOGGER = Logging.getLogger(WFSStoredQueryFeatureSource.class);
 
     private final StoredQueryDescriptionType desc;
 
-    public WFSStoredQueryContentFeatureSource(final ContentEntry entry, final WFSClient client,
+    public WFSStoredQueryFeatureSource(final ContentEntry entry, final WFSClient client,
             StoredQueryDescriptionType desc) {
         super(entry, client);
         this.desc = desc;

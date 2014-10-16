@@ -150,7 +150,7 @@ public class WFSDataStore extends ContentDataStore {
             String storedQueryId = configuredStoredQueries.get(entry.getName().getLocalPart());
             StoredQueryDescriptionType desc = getStoredQueryDescriptionType(storedQueryId);
 
-            source = new WFSStoredQueryContentFeatureSource(entry, client, desc);
+            source = new WFSStoredQueryFeatureSource(entry, client, desc);
         }
 
         return source;
