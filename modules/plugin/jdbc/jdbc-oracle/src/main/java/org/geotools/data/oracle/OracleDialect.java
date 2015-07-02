@@ -292,16 +292,21 @@ public class OracleDialect extends PreparedStatementSQLDialect {
             return null;
         }
         
+        List<String> parameters = new ArrayList<String>();
+        
         // setup the sql to use for the ALL_SDO table
         String metadataTableStatement = "SELECT TYPE FROM " + geometryMetadataTable 
-                + " WHERE F_TABLE_NAME = '" + tableName + "'" 
-                + " AND F_GEOMETRY_COLUMN = '" + columnName + "'";
+                + " WHERE F_TABLE_NAME = ?" 
+                + " AND F_GEOMETRY_COLUMN = ?";
+        parameters.add(tableName);
+        parameters.add(columnName);
 
         if(schema != null && !"".equals(schema)) {
-            metadataTableStatement += " AND F_TABLE_SCHEMA = '" + schema + "'";
+            metadataTableStatement += " AND F_TABLE_SCHEMA = ?'";
+            parameters.add(schema);
         }
         
-        return readGeometryClassFromStatement(cx, metadataTableStatement);
+        return readGeometryClassFromStatement(cx, metadataTableStatement, parameters);
     }
 
     /**
@@ -309,20 +314,27 @@ public class OracleDialect extends PreparedStatementSQLDialect {
      */
     private Class<?> lookupGeometryClassOnAllIndex(Connection cx, String tableName,
             String columnName, String schema) throws SQLException {
+    	List<String> parameters = new ArrayList<String>();
+    	
         // setup the sql to use for the ALL_SDO table
         String allSdoSqlStatement = "SELECT META.SDO_LAYER_GTYPE\n" +
             "FROM ALL_INDEXES INFO\n" +
             "INNER JOIN MDSYS.ALL_SDO_INDEX_METADATA META\n" +
             "ON INFO.INDEX_NAME = META.SDO_INDEX_NAME\n" +
-            "WHERE INFO.TABLE_NAME = '" + tableName + "'\n" +
-            "AND REPLACE(meta.sdo_column_name, '\"') = '" + columnName + "'\n";
+            "WHERE INFO.TABLE_NAME = ?\n" +
+            "AND REPLACE(meta.sdo_column_name, '\"') = ?\n";
 
+        parameters.add(tableName);
+        parameters.add(columnName);
+        
         if(schema != null && !"".equals(schema)) {
-            allSdoSqlStatement += " AND INFO.TABLE_OWNER = '" + schema + "'";
-            allSdoSqlStatement += " AND META.SDO_INDEX_OWNER = '" + schema + "'";
+            allSdoSqlStatement += " AND INFO.TABLE_OWNER = ?";
+            allSdoSqlStatement += " AND META.SDO_INDEX_OWNER = ?";
+            parameters.add(schema);
+            parameters.add(schema);
         }
         
-        return readGeometryClassFromStatement(cx, allSdoSqlStatement);
+        return readGeometryClassFromStatement(cx, allSdoSqlStatement, parameters);
     }
 
     /**
@@ -336,20 +348,27 @@ public class OracleDialect extends PreparedStatementSQLDialect {
         if (!canAccessUserViews(cx)) {
             return null;
         }
-            
+        
+        List<String> parameters = new ArrayList<String>();
+        
         //setup the sql to use for the USER_SDO table
         String userSdoSqlStatement = "SELECT META.SDO_LAYER_GTYPE\n" +
             "FROM ALL_INDEXES INFO\n" +
             "INNER JOIN MDSYS.USER_SDO_INDEX_METADATA META\n" +
             "ON INFO.INDEX_NAME = META.SDO_INDEX_NAME\n" +
-            "WHERE INFO.TABLE_NAME = '" + tableName + "'\n" +
-            "AND REPLACE(meta.sdo_column_name, '\"') = '" + columnName + "'\n";
+            "WHERE INFO.TABLE_NAME = ?\n" +
+            "AND REPLACE(meta.sdo_column_name, '\"') = ?\n";
 
+        
+        parameters.add(tableName);
+        parameters.add(columnName);
+        
         if(schema != null && !"".equals(schema)) {
-            userSdoSqlStatement += " AND INFO.TABLE_OWNER = '" + schema + "'";
+            userSdoSqlStatement += " AND INFO.TABLE_OWNER = ?";
+            parameters.add(schema);
         }
 
-        return readGeometryClassFromStatement(cx, userSdoSqlStatement);
+        return readGeometryClassFromStatement(cx, userSdoSqlStatement, parameters);
     }
     
     /**
@@ -359,14 +378,19 @@ public class OracleDialect extends PreparedStatementSQLDialect {
      * @return
      * @throws SQLException
      */
-    private Class readGeometryClassFromStatement(Connection cx, String sql)
+    private Class readGeometryClassFromStatement(Connection cx, String sql, List<String> parameters)
             throws SQLException {
-        Statement st = null;
+        PreparedStatement st = null;
         ResultSet rs = null;
         try {
-            st = cx.createStatement();
-            LOGGER.log(Level.FINE, "Geometry type check; {0} ", sql);
-            rs = st.executeQuery(sql);
+            st = cx.prepareStatement(sql);
+            LOGGER.log(Level.FINE, "Geometry type check; {0} [ parameters = {1} ]", new Object[] { sql, parameters } );
+            
+            for (int i = 0; i < parameters.size(); i++) {
+            	st.setString(i+1, parameters.get(i));
+            }
+            
+            rs = st.executeQuery();
             if (rs.next()) {
                 String gType = rs.getString(1);
                 Class geometryClass = (Class) TT.GEOM_CLASSES.get(gType);
@@ -661,16 +685,22 @@ public class OracleDialect extends PreparedStatementSQLDialect {
             return null;
         }
         
+        List<String> parameters = new ArrayList<String>();
+        
         // setup the sql to use for the ALL_SDO table
         String metadataTableStatement = "SELECT SRID FROM " + geometryMetadataTable 
-                + " WHERE F_TABLE_NAME = '" + tableName + "'" 
-                + " AND F_GEOMETRY_COLUMN = '" + columnName + "'";
+                + " WHERE F_TABLE_NAME = ?" 
+                + " AND F_GEOMETRY_COLUMN = ?";
 
+        parameters.add(tableName);
+        parameters.add(columnName);
+        
         if(schema != null && !"".equals(schema)) {
-            metadataTableStatement += " AND F_TABLE_SCHEMA = '" + schema + "'";
+            metadataTableStatement += " AND F_TABLE_SCHEMA = ?";
+            parameters.add(schema);
         }
         
-        return readIntegerFromStatement(cx, metadataTableStatement);
+        return readIntegerFromStatement(cx, metadataTableStatement, parameters);
     }
 
     /**
@@ -678,14 +708,18 @@ public class OracleDialect extends PreparedStatementSQLDialect {
      */
     private Integer lookupSRIDFromAllViews(String schemaName, String tableName, String columnName,
             Connection cx) throws SQLException {
-        StringBuffer allSdoSql = new StringBuffer("SELECT SRID FROM MDSYS.ALL_SDO_GEOM_METADATA WHERE ");
-        allSdoSql.append( "TABLE_NAME='").append( tableName.toUpperCase() ).append("' AND ");
-        allSdoSql.append( "COLUMN_NAME='").append( columnName.toUpperCase() ).append( "'");
+    	List<String> parameters = new ArrayList<String>();
+    	
+        String allSdoSql = "SELECT SRID FROM MDSYS.ALL_SDO_GEOM_METADATA WHERE TABLE_NAME = ? AND COLUMN_NAME = ?";
+        parameters.add(tableName.toUpperCase());
+        parameters.add(columnName.toUpperCase());
+
         if(schemaName != null) {
-            allSdoSql.append(" AND OWNER='" + schemaName + "'");
+        	allSdoSql += " AND OWNER = ?";
+        	parameters.add(schemaName);
         }
 
-        return readIntegerFromStatement(cx, allSdoSql.toString());
+        return readIntegerFromStatement(cx, allSdoSql, parameters);
     }
 
     /**
@@ -703,20 +737,29 @@ public class OracleDialect extends PreparedStatementSQLDialect {
             return null;
         }
         
-        StringBuffer userSdoSql = new StringBuffer("SELECT SRID FROM MDSYS.USER_SDO_GEOM_METADATA WHERE ");
-        userSdoSql.append( "TABLE_NAME='").append( tableName.toUpperCase() ).append("' AND ");
-        userSdoSql.append( "COLUMN_NAME='").append( columnName.toUpperCase() ).append( "'");
-
-        return readIntegerFromStatement(cx, userSdoSql.toString());
+        List<String> parameters = new ArrayList<String>();
+        
+        String userSdoSql = "SELECT SRID FROM MDSYS.USER_SDO_GEOM_METADATA WHERE "+
+        		"TABLE_NAME = ? AND COLUMN_NAME = ?";
+        
+        parameters.add(tableName.toUpperCase());
+        parameters.add(columnName.toUpperCase());
+        
+        return readIntegerFromStatement(cx, userSdoSql, parameters);
     }
 
-    private Integer readIntegerFromStatement(Connection cx, String sql) throws SQLException {
-        Statement userSdoStatement = null;
+    private Integer readIntegerFromStatement(Connection cx, String sql, List<String> parameters) throws SQLException {
+        PreparedStatement userSdoStatement = null;
         ResultSet userSdoResult = null;
         try {
-            userSdoStatement = cx.createStatement();
-            LOGGER.log(Level.FINE, "SRID check; {0} ", sql);
-            userSdoResult = userSdoStatement.executeQuery(sql);
+            userSdoStatement = cx.prepareStatement(sql);
+            LOGGER.log(Level.FINE, "SRID check; {0}  [ parameters: {1} ]", new Object[] { sql, parameters });
+            
+            for (int i = 0 ; i < parameters.size(); i++) {
+            	userSdoStatement.setString(i+1, parameters.get(i));
+            }
+            
+            userSdoResult = userSdoStatement.executeQuery();
             if (userSdoResult.next()) {
                 Object intValue = userSdoResult.getObject( 1 );
                 if ( intValue != null ) {
@@ -757,16 +800,22 @@ public class OracleDialect extends PreparedStatementSQLDialect {
             return null;
         }
         
+        List<String> parameters = new ArrayList<String>();
+        
         // setup the sql to use for the ALL_SDO table
         String metadataTableStatement = "SELECT COORD_DIMENSION FROM " + geometryMetadataTable 
-                + " WHERE F_TABLE_NAME = '" + tableName + "'" 
-                + " AND F_GEOMETRY_COLUMN = '" + columnName + "'";
+                + " WHERE F_TABLE_NAME = ?" 
+                + " AND F_GEOMETRY_COLUMN = ?";
 
+        parameters.add(tableName);
+        parameters.add(columnName);
+        
         if(schema != null && !"".equals(schema)) {
-            metadataTableStatement += " AND F_TABLE_SCHEMA = '" + schema + "'";
+            metadataTableStatement += " AND F_TABLE_SCHEMA = ?";
+            parameters.add(schema);
         }
         
-        return readIntegerFromStatement(cx, metadataTableStatement);
+        return readIntegerFromStatement(cx, metadataTableStatement, parameters);
     }
 
     /**
@@ -774,14 +823,21 @@ public class OracleDialect extends PreparedStatementSQLDialect {
      */
     private Integer lookupDimensionFromAllViews(String schemaName, String tableName, String columnName,
             Connection cx) throws SQLException {
-        StringBuffer allSdoSql = new StringBuffer("SELECT DIMINFO FROM MDSYS.ALL_SDO_GEOM_METADATA USGM, table(USGM.DIMINFO) WHERE ");
-        allSdoSql.append( "TABLE_NAME='").append( tableName.toUpperCase() ).append("' AND ");
-        allSdoSql.append( "COLUMN_NAME='").append( columnName.toUpperCase() ).append( "'");
+    	
+    	List<String> parameters = new ArrayList<String>();
+    	
+        String allSdoSql = "SELECT DIMINFO FROM MDSYS.ALL_SDO_GEOM_METADATA USGM, table(USGM.DIMINFO) WHERE "+
+        	" TABLE_NAME = ? AND COLUMN_NAME = ?";
+        
+        parameters.add(tableName.toUpperCase());
+        parameters.add(columnName.toUpperCase());
+        
         if(schemaName != null) {
-            allSdoSql.append(" AND OWNER='" + schemaName + "'");
+            allSdoSql += " AND OWNER = ?";
+            parameters.add(schemaName);
         }
 
-        return readIntegerFromStatement(cx, allSdoSql.toString());
+        return readIntegerFromStatement(cx, allSdoSql, parameters);
     }
 
     /**
@@ -799,11 +855,15 @@ public class OracleDialect extends PreparedStatementSQLDialect {
             return null;
         }
         
-        StringBuffer userSdoSql = new StringBuffer("SELECT COUNT(*) FROM MDSYS.USER_SDO_GEOM_METADATA USGM, table(USGM.DIMINFO) WHERE ");
-        userSdoSql.append( "TABLE_NAME='").append( tableName.toUpperCase() ).append("' AND ");
-        userSdoSql.append( "COLUMN_NAME='").append( columnName.toUpperCase() ).append( "'");
+        List<String> parameters = new ArrayList<String>();
+        
+        String userSdoSql = "SELECT COUNT(*) FROM MDSYS.USER_SDO_GEOM_METADATA USGM, table(USGM.DIMINFO) WHERE "+
+        	"TABLE_NAME = ? AND COLUMN_NAME = ?";
 
-        return readIntegerFromStatement(cx, userSdoSql.toString());
+        parameters.add(tableName.toUpperCase());
+        parameters.add(columnName.toUpperCase());
+        
+        return readIntegerFromStatement(cx, userSdoSql, parameters);
     }
     
     @Override
@@ -815,12 +875,14 @@ public class OracleDialect extends PreparedStatementSQLDialect {
         
         // otherwise try to decode the WKT, most of the time it's invalid, but
         // for new codes they learned the proper WKT syntax
-        String sql = "SELECT WKTEXT FROM MDSYS.CS_SRS WHERE SRID = " + srid;
-        Statement st = null;
+        String sql = "SELECT WKTEXT FROM MDSYS.CS_SRS WHERE SRID = ?";
+        PreparedStatement st = null;
         ResultSet rs = null; 
         try {
-            st = cx.createStatement();
-            rs = st.executeQuery( sql.toString() );
+        	st = cx.prepareStatement(sql);
+        	st.setInt(1, srid);
+            
+            rs = st.executeQuery();
             if ( rs.next() ) {
                 String wkt = rs.getString(1);
                 if ( wkt != null ) {
@@ -1072,11 +1134,12 @@ public class OracleDialect extends PreparedStatementSQLDialect {
     public String getSequenceForColumn(String schemaName, String tableName,
             String columnName, Connection cx) throws SQLException {
         String sequenceName = (tableName + "_" + columnName + "_SEQUENCE").toUpperCase();
-        Statement st = cx.createStatement();
+        PreparedStatement st = null;
         try {
             // check the user owned sequences
-            ResultSet rs = st.executeQuery( "SELECT * FROM USER_SEQUENCES" +
-                " WHERE SEQUENCE_NAME = '" + sequenceName + "'");
+        	st = cx.prepareStatement("SELECT * FROM USER_SEQUENCES WHERE SEQUENCE_NAME = ?");
+        	st.setString(1, sequenceName);
+            ResultSet rs = st.executeQuery();
             try {
                 if ( rs.next() ) {
                     return sequenceName; 
@@ -1085,10 +1148,13 @@ public class OracleDialect extends PreparedStatementSQLDialect {
                 dataStore.closeSafe( rs );
             }
             dataStore.closeSafe( rs );
+            dataStore.closeSafe( st );
+            st = null;
             
             // that did not work, let's see if the sequence is available in someone else schema
-            rs = st.executeQuery( "SELECT * FROM ALL_SEQUENCES" +
-                    " WHERE SEQUENCE_NAME = '" + sequenceName + "'");
+            st = cx.prepareStatement("SELECT * FROM ALL_SEQUENCES  WHERE SEQUENCE_NAME = ?");
+            st.setString(1, sequenceName);
+            rs = st.executeQuery( );
             try {
                 if ( rs.next() ) {
                     String schema = rs.getString("SEQUENCE_OWNER");

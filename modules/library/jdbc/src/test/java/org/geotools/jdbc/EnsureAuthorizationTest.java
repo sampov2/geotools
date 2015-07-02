@@ -88,6 +88,12 @@ public class EnsureAuthorizationTest {
         }
 
         @Override
+        public PreparedStatement prepareStatement(final String sql2) throws SQLException
+        {
+        	return this.prepareStatement(sql2, 0, 0);
+        }
+        
+        @Override
         public PreparedStatement prepareStatement(final String sql, int arg1,
                 int arg2) throws SQLException {
             pstmt = new MockPreparedStatement(this, sql, arg1, arg2) {
